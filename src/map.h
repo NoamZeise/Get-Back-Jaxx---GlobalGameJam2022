@@ -10,6 +10,8 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <map>
+#include <fstream>
+#include <string>
 
 //#define SEE_COLLIDERS;
 
@@ -19,6 +21,41 @@ struct Tile
 	Resource::Texture texture;
 };
 
+enum EnemyTypes
+{
+	Basic
+};
+
+struct MapEnemy
+{
+	MapEnemy(glm::vec2 spawn, EnemyTypes type)
+	{
+		this->spawn = spawn;
+		this->type = type;
+	}
+	MapEnemy() {}
+	glm::vec2 spawn;
+	EnemyTypes type;
+};
+
+struct MapMessage
+{
+	MapMessage(glm::vec4 rect, std::string fileName)
+	{
+		this->rect = rect;
+		
+    	std::ifstream file(fileName);
+    	std::string line; 
+    	while (std::getline(file, line))
+    	{
+			messages.push_back(line);
+    	}
+	}
+	MapMessage() {}
+	glm::vec4 rect;
+	std::vector<std::string> messages;
+};
+
 class Map
 {
 public:
@@ -26,18 +63,26 @@ public:
 	Map(){}
 	void Update(glm::vec4 cameraRect);
 	void Draw(Render &render);
-	glm::vec4 getMapRect();
-	glm::vec4 getMapRect(glm::vec2 pos);
-	std::vector<glm::vec4> getCameraRects();
+	glm::vec4 getMapRect() {return mapRect; }
+	std::vector<glm::vec4> getCameraRects() { return cameraRects; }
+	std::vector<glm::vec4> getMapColliders() {return colliders;}
+	std::vector<MapEnemy> getEnemySpawns() {return enemySpawns;}
+	std::vector<MapMessage> getMapMessages() {return messageAreas;}
+	glm::vec2 getPlayerSpawn() { return playerSpawn; }
+
 private:
 	tiled::Map map;
-	std::vector<glm::vec4> colliders;
 	std::vector<glm::mat4> tileMats;
 	std::vector<bool> toDraw;
 	std::vector<glm::vec4> tileRects;
 	std::vector<Tile> tiles;
 	std::vector<glm::vec4> cameraRects;
 	glm::vec4 mapRect;
+
+	std::vector<glm::vec4> colliders;
+	std::vector<MapEnemy> enemySpawns;
+	glm::vec2 playerSpawn;
+	std::vector<MapMessage> messageAreas;
 };
 
 

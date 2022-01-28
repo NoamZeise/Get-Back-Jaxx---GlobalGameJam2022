@@ -56,6 +56,12 @@ Map::Map(std::string filename, Render &render)
 				colliders.push_back(glm::vec4(obj.x, obj.y, obj.w, obj.h));
 			if(obj.props.camera || objGroup.props.camera)
 				cameraRects.push_back(glm::vec4(obj.x, obj.y, obj.w, obj.h));
+			if(obj.props.message != "")
+				messageAreas.push_back(MapMessage(glm::vec4(obj.x, obj.y, obj.w, obj.h), obj.props.message));
+			if(obj.props.playerSpawn)
+				playerSpawn = glm::vec2(obj.x, obj.y);
+			if(obj.props.enemySpawn)
+				enemySpawns.push_back(MapEnemy(glm::vec2(obj.x, obj.y), EnemyTypes::Basic));
 		}
 	}
 
@@ -91,14 +97,4 @@ void Map::Draw(Render &render)
 				render.DrawQuad(tiles[map.layers[i - 1].data[j]].texture, tileMats[j], glm::vec4(1.0f), tiles[map.layers[i - 1].data[j]].tileRect);
 		}
 	}
-}
-
-glm::vec4 Map::getMapRect()
-{
-	return mapRect;
-}
-
-std::vector<glm::vec4> Map::getCameraRects()
-{
-	return cameraRects;
 }

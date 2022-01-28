@@ -26,6 +26,7 @@ struct Properties
 	bool camera = false;
 	bool playerSpawn = false;
 	bool enemySpawn = false;
+	std::string message = "";
 };
 
 static Properties fillPropStruct(rapidxml::xml_node<> *propertiesNode);

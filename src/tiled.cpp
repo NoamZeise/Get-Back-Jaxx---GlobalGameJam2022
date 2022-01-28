@@ -244,6 +244,10 @@ Properties fillPropStruct(rapidxml::xml_node<> *propertiesNode)
 			else
 				std::cout << "WARNING: property camera did not have true or false value!" << std::endl;
 		}
+		else if(name == "message")
+		{
+			props.message = value;
+		}
 
 		else
 		{

@@ -11,6 +11,7 @@ struct Frame
 {
 	Resource::Texture tex;
 	glm::vec4 textureOffset;
+	glm::vec2 size;
 	float delay;
 };
 
@@ -26,6 +27,7 @@ public:
 			frames.back().tex = tex;
 			frames.back().textureOffset = glm::vec4(0, 0, 1, 1);
 			frames.back().delay = delay;
+			frames.back().size = tex.dim;
 		}
 	}
 
@@ -39,6 +41,7 @@ public:
 			frames[i].textureOffset = vkhelper::calcTexOffset
 				(texture.dim, glm::vec4(i * FrameWidth, 0, FrameWidth, texture.dim.y));
 			frames[i].delay = delay;
+			frames[i].size = glm::vec2(FrameWidth, texture.dim.y);
 		}
 	}
 
@@ -60,6 +63,7 @@ public:
 					(texture.dim, glm::vec4(i * FrameWidth, 0, FrameWidth, texture.dim.y));
 			}
 			frames[i].delay = delay;
+			frames[i].size = glm::vec2(FrameWidth, texture.dim.y);
 		}
 	}
 	
@@ -73,6 +77,7 @@ public:
 			frames[i].textureOffset = vkhelper::calcTexOffset
 				(texture.dim, glm::vec4(i * FrameWidth, yOffset, FrameWidth, FrameHeight));
 			frames[i].delay = delay;
+			frames[i].size = glm::vec2(FrameWidth, FrameHeight);
 		}
 	}
 

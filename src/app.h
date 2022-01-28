@@ -14,7 +14,9 @@
 #include <iostream>
 #include <thread>
 #include <stdexcept>
+#include <string>
 #include <atomic>
+#include <array>
 
 #include "vulkan-render/render.h"
 #include "vulkan-render/config.h"
@@ -24,6 +26,8 @@
 #include "camera.h"
 #include "map.h"
 #include "animation.h"
+#include "message.h"
+#include "actors.h"
 
 //#define TIME_APP_DRAW_UPDATE
 //#define MULTI_UPDATE_ON_SLOW_DRAW
@@ -68,15 +72,9 @@ private:
 
 	float time = 0.0f;
 
-	Resource::Texture testTex;
-	Resource::Font* testFont;
-	glm::vec4 player = glm::vec4(10, 10, 16, 23);
-	Animation walkDown;
-	Animation walkRight;
-	Animation walkUp;
-	Animation walkLeft;
-	glm::vec2 prevDir = glm::vec2(0);
-	Frame currentFrame;
+	Player player;
+	MessageManager msgManager;
+	std::vector<MapMessage> messages;
 	
 	Audio sound;
 	Map testMap;

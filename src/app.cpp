@@ -10,7 +10,7 @@ App::App()
 	if (!glfwInit())
 			throw std::runtime_error("failed to initialise glfw!");
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); //using vulkan not openGL
-	mWindow = glfwCreateWindow(mWindowWidth, mWindowHeight, "Vulkan App", nullptr, nullptr);
+	mWindow = glfwCreateWindow(mWindowWidth, mWindowHeight, "GGJ22", nullptr, nullptr);
 	if(!mWindow)
 	{
 		glfwTerminate();
@@ -49,7 +49,6 @@ App::~App()
 {
 	if(submitDraw.joinable())
 		submitDraw.join();
-	delete testFont;
 	delete mRender;
 	mRender = nullptr;
 	glfwDestroyWindow(mWindow);
@@ -58,17 +57,21 @@ App::~App()
 
 void App::loadAssets()
 {
-	testTex = mRender->LoadTexture("textures/error.png");
-	testFont = mRender->LoadFont("textures/Roboto-Black.ttf");
-
 	testMap =  Map("maps/testMap.tmx", *mRender);
+	messages = testMap.getMapMessages();
 	cam2D.setCameraRects(testMap.getCameraRects());
 	cam2D.setCameraMapRect(testMap.getMapRect());
 
-	walkDown = Animation(mRender->LoadTexture("textures/runDown.png"), 100, 16);
-	walkRight = Animation(mRender->LoadTexture("textures/runRight.png"), 100, 17);
-	walkLeft = Animation(mRender->LoadTexture("textures/runRight.png"), 100, 17, true);
-	walkUp = Animation(mRender->LoadTexture("textures/runUp.png"), 100, 16);
+	player = Player(
+		{
+		Animation(mRender->LoadTexture("textures/runUp.png"), 100, 16),
+		Animation(mRender->LoadTexture("textures/runDown.png"), 100, 16),
+		Animation(mRender->LoadTexture("textures/runRight.png"), 100, 17, true),
+		Animation(mRender->LoadTexture("textures/runRight.png"), 100, 17)},
+		testMap.getPlayerSpawn()
+	);
+
+	msgManager = MessageManager(*mRender);
 
 	mRender->endResourceLoad();
 }
@@ -100,50 +103,34 @@ void App::update()
 #endif
 	glfwPollEvents();
 
-	glm::vec2 dir = glm::vec2(0);
-	currentFrame = walkDown.getFrame(0);
-	if(input.Keys[GLFW_KEY_W])
+	if(msgManager.isActive())
 	{
-		dir.y -= 0.1f; 
-	}
-	if(input.Keys[GLFW_KEY_S])
-	{
-		dir.y += 0.1f; 
-	}
-		if(input.Keys[GLFW_KEY_A])
-	{
-		dir.x -= 0.1f; 
-	}
-	if(input.Keys[GLFW_KEY_D])
-	{
-		dir.x += 0.1f; 
-	}
-	player.x += dir.x * timer.FrameElapsed();
-	player.y += dir.y * timer.FrameElapsed();
-	if(dir == glm::vec2(0))
-	{
-		if(prevDir.y > 0)
-			currentFrame = walkDown.getFrame(0);
-		else if(prevDir.y < 0)
-			currentFrame = walkUp.getFrame(0);
-		else if(prevDir.x > 0)
-			currentFrame = walkRight.getFrame(0);
-		else if(prevDir.x < 0)
-			currentFrame = walkLeft.getFrame(0);
+		msgManager.Update(timer, input);
 	}
 	else
 	{
-		if(dir.y > 0)
-			currentFrame = walkDown.Play(timer);
-		else if(dir.y < 0)
-			currentFrame = walkUp.Play(timer);
-		else if(dir.x > 0)
-			currentFrame = walkRight.Play(timer);
-		else if(dir.x < 0)
-			currentFrame = walkLeft.Play(timer);
-		prevDir = dir;
+
+		player.Update(timer, input);
+		for(unsigned int i = 0; i < messages.size(); i++)
+		{
+			//std::cout << "x: " << messages[i].rect.x << std::endl;
+			if(gh::colliding(player.rect(), messages[i].rect))
+			{
+				for(const auto &s: messages[i].messages)
+					msgManager.AddMessage(*mRender, s);
+				messages.erase(messages.begin() + i--);
+			}
+		}
+
+	if(input.Keys[GLFW_KEY_T])
+	{
+		msgManager.AddMessage(*mRender, 
+		"hello this is a test for the message box with automatic new lines from input string, I hope this works! Now I adjust my size based on the length of the input string.");
+			msgManager.AddMessage(*mRender, 
+		"I am a new message!");
 	}
 
+	}
 
 	postUpdate();
 #ifdef TIME_APP_DRAW_UPDATE
@@ -158,8 +145,7 @@ void App::update()
 void App::postUpdate()
 {
 	time += timer.FrameElapsed();
-	cam3D.update(input, previousInput, timer);
-	cam2D.Target(glm::vec2(player.x + player.z/2, player.y + player.w/2), timer);
+	cam2D.Target(player.getMid(), timer);
 	testMap.Update(cam2D.getCameraArea());
 	timer.Update();
 	previousInput = input;
@@ -186,8 +172,9 @@ void App::draw()
 
 	mRender->begin2DDraw();
 
-	//mRender->DrawString(testFont, "text on the screen", glm::vec2(100, 100), 70, 0, glm::vec4(1.0f));
-	mRender->DrawQuad(currentFrame.tex, vkhelper::calcMatFromRect(player, 0), glm::vec4(1), currentFrame.textureOffset);
+	msgManager.Draw(*mRender, cam2D.getCameraOffset());
+
+	player.Draw(*mRender, cam2D.getCameraArea());
 
 	testMap.Draw(*mRender);
 	

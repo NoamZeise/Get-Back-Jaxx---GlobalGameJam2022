@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-set(ProjectName "Vulkan-Environment")
+set(ProjectName "GGJ22")
 # set the project name
 project(${ProjectName} VERSION 1.0)
 

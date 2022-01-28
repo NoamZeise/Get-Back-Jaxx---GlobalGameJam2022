@@ -389,6 +389,9 @@ if(currentIndex >= DS::MAX_BATCH_SIZE)
 
 		mModelLoader.drawQuad(mSwapchain.frameData[mImg].commandBuffer, pipeline2D.layout, texID.ID,
 		 	1, 0, colour, texOffset);
+			vps.normalMat[3][3] = 0.0;
+		vkCmdPushConstants(mSwapchain.frameData[mImg].commandBuffer, pipeline2D.layout, VK_SHADER_STAGE_VERTEX_BIT,
+							0, sizeof(vectPushConstants), &vps);
 		return;
 	}
 
@@ -448,6 +451,13 @@ void Render::DrawString(Resource::Font* font, std::string text, glm::vec2 positi
 		position.x += cTex->Advance * size;
 		
 	}
+	vectPushConstants tempVps{
+				glm::mat4(1.0f),
+				glm::mat4(1.0f)
+				};   
+			tempVps.normalMat[3][3] = 0.0;
+		vkCmdPushConstants(mSwapchain.frameData[mImg].commandBuffer, pipeline2D.layout, VK_SHADER_STAGE_VERTEX_BIT,
+							0, sizeof(vectPushConstants), &tempVps);
 }
 
 float Render::MeasureString(Resource::Font* font, std::string text, float size)
