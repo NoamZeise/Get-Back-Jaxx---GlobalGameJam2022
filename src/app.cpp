@@ -3,8 +3,8 @@
 App::App()
 {
 	//set member variables
-	mWindowWidth = settings::TARGET_WIDTH * 4;
-	mWindowHeight = settings::TARGET_HEIGHT * 4;
+	mWindowWidth = settings::TARGET_WIDTH * 2;
+	mWindowHeight = settings::TARGET_HEIGHT * 2;
 	//init glfw window
 	glfwSetErrorCallback(error_callback);
 	if (!glfwInit())
@@ -38,11 +38,6 @@ App::App()
 	mRender = new Render(mWindow, glm::vec2(settings::TARGET_WIDTH, settings::TARGET_HEIGHT));
 	loadAssets();
 
-	cam3D = camera::freecam(glm::vec3(3.0f, 0.0f, 2.0f));
-
-	//sound = Audio("audio/main.mp3");
-	//sound.loop();
-
 }
 
 App::~App()
@@ -57,21 +52,27 @@ App::~App()
 
 void App::loadAssets()
 {
-	testMap =  Map("maps/testMap.tmx", *mRender);
-	messages = testMap.getMapMessages();
-	cam2D.setCameraRects(testMap.getCameraRects());
-	cam2D.setCameraMapRect(testMap.getMapRect());
+	currentMap =  Map("maps/forgottenLab.tmx", *mRender);
 
-	player = Player(
-		{
-		Animation(mRender->LoadTexture("textures/runUp.png"), 100, 16),
-		Animation(mRender->LoadTexture("textures/runDown.png"), 100, 16),
-		Animation(mRender->LoadTexture("textures/runRight.png"), 100, 17, true),
-		Animation(mRender->LoadTexture("textures/runRight.png"), 100, 17)},
-		testMap.getPlayerSpawn()
-	);
+	assets.playerAnim = {
+		Animation(mRender->LoadTexture("textures/sprites/player/runUp.png"), 100, 16),
+		Animation(mRender->LoadTexture("textures/sprites/player/runDown.png"), 100, 16),
+		Animation(mRender->LoadTexture("textures/sprites/player/runRight.png"), 100, 17, true),
+		Animation(mRender->LoadTexture("textures/sprites/player/runRight.png"), 100, 17),
+		Animation(mRender->LoadTexture("textures/sprites/player/weapon.png"), 20, 15)
+		};
+	assets.enemy1Anim =  {
+		Animation(mRender->LoadTexture("textures/sprites/enemy1/up-22.png"), 200, 22),
+		Animation(mRender->LoadTexture("textures/sprites/enemy1/down-22.png"), 200, 22),
+		Animation(mRender->LoadTexture("textures/sprites/enemy1/right-18.png"), 200, 18, true),
+		Animation(mRender->LoadTexture("textures/sprites/enemy1/right-18.png"), 200, 18),
+		Animation(mRender->LoadTexture("textures/sprites/enemy1/right-18.png"), 200, 18)
+	};
 
+	assets.bullet = mRender->LoadTexture("textures/sprites/bullet.png");
 	msgManager = MessageManager(*mRender);
+
+	LoadMap(currentMap);
 
 	mRender->endResourceLoad();
 }
@@ -96,6 +97,33 @@ void App::resize(int windowWidth, int windowHeight)
 		mRender->framebufferResized = true;
 }
 
+void App::LoadMap(Map &map)
+{
+	bullets.clear();
+	messages.clear();
+	messages = currentMap.getMapMessages();
+	music.stop();
+	music = Audio(currentMap.getMusic());
+	music.loop();
+	music.setVolume(0.3);
+	staticColliders.clear();
+	staticColliders = currentMap.getGapColliders();
+	nonGapColliders.clear();
+	nonGapColliders = currentMap.getMapColliders();
+	staticColliders.insert(staticColliders.end(), nonGapColliders.begin(), nonGapColliders.end());
+	cam2D.SetCameraOffset(map.getPlayerSpawn());
+	cam2D.setCameraRects(currentMap.getCameraRects());
+	cam2D.setCameraMapRect(currentMap.getMapRect());
+	player = Player(assets.playerAnim, currentMap.getPlayerSpawn(), &audio);
+	enemies.clear();
+	auto eSpawns = currentMap.getEnemySpawns();
+	for(const auto &e: eSpawns)
+	{
+		if(e.type == EnemyTypes::Basic)
+			enemies.push_back(Enemy(assets.enemy1Anim, e.spawn, &audio));
+	}
+}
+
 void App::update()
 {
 #ifdef TIME_APP_DRAW_UPDATE
@@ -110,25 +138,88 @@ void App::update()
 	else
 	{
 
-		player.Update(timer, input);
-		for(unsigned int i = 0; i < messages.size(); i++)
+		player.Update(timer, input, staticColliders);
+
+		auto playerMid =  player.getMid();
+		for(unsigned int i = 0; i < enemies.size(); i++)
 		{
-			//std::cout << "x: " << messages[i].rect.x << std::endl;
+			enemies[i].Update(timer, staticColliders, playerMid);
+			if(gh::colliding(enemies[i].getHitBox(), cam2D.currentRoom))
+			{
+				enemies[i].active = true;
+			}
+			else
+				enemies[i].active = false;
+			if(enemies[i].active)
+			{
+				if(gh::colliding(enemies[i].getHitBox(), player.getDamageRect()))
+					enemies[i].Hurt(player.getMid());
+				if(gh::colliding(enemies[i].getHitBox(), player.getHitBox()))
+					player.Hurt(enemies[i].getMid());
+
+				for(unsigned int j = 0; j < bullets.size(); j++)
+				{
+					if(bullets[j].Active())
+					{
+						if(gh::colliding(enemies[i].getHitBox(), bullets[j].getRect()))
+						{
+							enemies[i].Hurt(bullets[j].getMid());
+							bullets.erase(bullets.begin() + j--);
+						}
+					}
+				}
+
+				if(enemies[i].Shoot())
+				{
+					bullets.push_back(Bullet(
+						assets.bullet, 
+						enemies[i].getMid(),
+						glm::normalize(player.getMid() - enemies[i].getMid()) * 0.1f));
+				}
+			}
+			if(!enemies[i].Alive())
+				enemies.erase(enemies.begin() + i--);
+		}
+		for(unsigned int i = 0; i < bullets.size(); i++)
+		{
+			bullets[i].Update(timer, nonGapColliders);
+			if(gh::colliding(bullets[i].getRect(), player.getDamageRect()))
+			{
+				bullets[i].Reverse(player.getMid(), glm::vec4(1));
+				bullets.push_back(bullets[i]);
+				bullets.erase(bullets.begin() + i--);
+				continue;
+			}
+			if(gh::colliding(bullets[i].getRect(), player.getHitBox()))
+			{
+				player.Hurt(bullets[i].getMid());
+				bullets.erase(bullets.begin() + i--);
+				continue;
+			}
+			for(unsigned int j = 0; j < bullets.size(); j++)
+			{
+				if(i == j)
+					continue;
+				if(gh::colliding(bullets[i].getRect(), bullets[j].getRect()))
+				{
+					bullets[i].Reverse(bullets[j].getMid(), glm::vec4(1));
+					bullets[j].Reverse(bullets[i].getMid(), glm::vec4(1));
+				}
+			}
+			if(bullets[i].Dead())
+				bullets.erase(bullets.begin() + i--);
+		}
+
+		if(!player.Alive())
+			LoadMap(currentMap);
+
+		for(unsigned int i = 0; i < messages.size(); i++)
 			if(gh::colliding(player.rect(), messages[i].rect))
 			{
 				for(const auto &s: messages[i].messages)
 					msgManager.AddMessage(*mRender, s);
 				messages.erase(messages.begin() + i--);
 			}
-		}
-
-	if(input.Keys[GLFW_KEY_T])
-	{
-		msgManager.AddMessage(*mRender, 
-		"hello this is a test for the message box with automatic new lines from input string, I hope this works! Now I adjust my size based on the length of the input string.");
-			msgManager.AddMessage(*mRender, 
-		"I am a new message!");
-	}
 
 	}
 
@@ -146,7 +237,7 @@ void App::postUpdate()
 {
 	time += timer.FrameElapsed();
 	cam2D.Target(player.getMid(), timer);
-	testMap.Update(cam2D.getCameraArea());
+	currentMap.Update(cam2D.getCameraArea());
 	timer.Update();
 	previousInput = input;
 	input.offset = 0;
@@ -167,16 +258,22 @@ void App::draw()
 	if(submitDraw.joinable())
 		submitDraw.join();
 
-	mRender->setViewMatrixAndFov(cam3D.getViewMatrix(), cam3D.getZoom());
 	mRender->set2DViewMatrix(cam2D.getViewMat());
 
 	mRender->begin2DDraw();
+
+	//mRender->DrawQuad(Resource::Texture(), vkhelper::calcMatFromRect(cam2D.currentRoom, 0), glm::vec4(1));
 
 	msgManager.Draw(*mRender, cam2D.getCameraOffset());
 
 	player.Draw(*mRender, cam2D.getCameraArea());
 
-	testMap.Draw(*mRender);
+	for(auto &e: enemies)
+		e.Draw(*mRender, cam2D.getCameraArea());
+	for(auto &b: bullets)
+		b.Draw(*mRender);
+
+	currentMap.Draw(*mRender);
 	
 	submitDraw = std::thread(&Render::endDraw, mRender, std::ref(finishedDrawSubmit));
 

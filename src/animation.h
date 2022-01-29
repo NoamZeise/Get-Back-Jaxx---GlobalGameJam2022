@@ -27,6 +27,7 @@ public:
 			frames.back().tex = tex;
 			frames.back().textureOffset = glm::vec4(0, 0, 1, 1);
 			frames.back().delay = delay;
+			totalDuration += delay;
 			frames.back().size = tex.dim;
 		}
 	}
@@ -41,6 +42,7 @@ public:
 			frames[i].textureOffset = vkhelper::calcTexOffset
 				(texture.dim, glm::vec4(i * FrameWidth, 0, FrameWidth, texture.dim.y));
 			frames[i].delay = delay;
+			totalDuration += delay;
 			frames[i].size = glm::vec2(FrameWidth, texture.dim.y);
 		}
 	}
@@ -63,6 +65,7 @@ public:
 					(texture.dim, glm::vec4(i * FrameWidth, 0, FrameWidth, texture.dim.y));
 			}
 			frames[i].delay = delay;
+			totalDuration += delay;
 			frames[i].size = glm::vec2(FrameWidth, texture.dim.y);
 		}
 	}
@@ -77,6 +80,7 @@ public:
 			frames[i].textureOffset = vkhelper::calcTexOffset
 				(texture.dim, glm::vec4(i * FrameWidth, yOffset, FrameWidth, FrameHeight));
 			frames[i].delay = delay;
+			totalDuration += delay;
 			frames[i].size = glm::vec2(FrameWidth, FrameHeight);
 		}
 	}
@@ -84,6 +88,8 @@ public:
 	Animation(std::vector<Frame> frames)
 	{
 		this->frames = frames;
+		for(const auto &f: frames)
+			totalDuration += f.delay;
 	}
 
 	std::vector<Frame> getAllFrames()
@@ -107,7 +113,6 @@ public:
 			if(current >= frames.size())
 				current = 0;
 		}
-
 		return frames[current];
 	}
 
@@ -116,10 +121,16 @@ public:
 		current = 0;
 	}
 
+	float getTotalDuration()
+	{
+		return totalDuration;
+	}
+
 private:
 	unsigned int current = 0;
 	std::vector<Frame> frames;
 	float frameTimer = 0;
+	float totalDuration = 0;
 };
 
 

@@ -491,7 +491,7 @@ void Render::drawBatch()
 	{
 #endif
 		mModelLoader.drawQuad(mSwapchain.frameData[mImg].commandBuffer, pipeline2D.layout, currentTexture.ID, modelRuns, currentIndex,
-			glm::vec4(1.0f), currentTexOffset);
+			currentColour, currentTexOffset);
 		vkCmdPushConstants(mSwapchain.frameData[mImg].commandBuffer, pipeline2D.layout, VK_SHADER_STAGE_VERTEX_BIT,
 							0, sizeof(vectPushConstants), &vps);
 #ifndef ONLY_2D

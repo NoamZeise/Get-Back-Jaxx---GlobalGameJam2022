@@ -66,9 +66,12 @@ public:
 	glm::vec4 getMapRect() {return mapRect; }
 	std::vector<glm::vec4> getCameraRects() { return cameraRects; }
 	std::vector<glm::vec4> getMapColliders() {return colliders;}
+	std::vector<glm::vec4> getGapColliders() { return gaps; }
 	std::vector<MapEnemy> getEnemySpawns() {return enemySpawns;}
 	std::vector<MapMessage> getMapMessages() {return messageAreas;}
+	std::vector<glm::vec2> getLights() {return lights;}
 	glm::vec2 getPlayerSpawn() { return playerSpawn; }
+	std::string getMusic() {return map.props.music;}
 
 private:
 	tiled::Map map;
@@ -79,10 +82,16 @@ private:
 	std::vector<glm::vec4> cameraRects;
 	glm::vec4 mapRect;
 
+	std::vector<glm::vec2> lights;
+
 	std::vector<glm::vec4> colliders;
+	std::vector<glm::vec4> gaps;
 	std::vector<MapEnemy> enemySpawns;
 	glm::vec2 playerSpawn;
 	std::vector<MapMessage> messageAreas;
+
+	glm::vec4 reactorRoom = glm::vec4(0);
+	glm::vec4 reactorTP = glm::vec4(0);
 };
 
 

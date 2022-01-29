@@ -92,11 +92,13 @@ namespace camera
 			else
 			{
 				glm::vec4 newRect = glm::vec4(0);
+				currentRoom = glm::vec4(0);
 				for(const auto& rect: cameraRects)
 				{
 					if(gh::contains(focus, rect))
 					{ 
 						newRect = rect;
+						currentRoom = rect;
 						break;
 					}
 				}

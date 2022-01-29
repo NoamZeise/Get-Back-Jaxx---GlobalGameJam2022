@@ -2,6 +2,10 @@
 #define GAME_HELPER_H
 
 #include <glm/glm.hpp>
+#include <string>
+#include <stdio.h>
+#include <random>
+#include <ctime>
 
 namespace gh
 {
@@ -23,6 +27,40 @@ namespace gh
 	{
 		return r.x < p.x && p.x < r.x + r.z  && r.y < p.y && p.y < r.y + r.w;   
 	}
+
+	inline static bool exists (const std::string& name) {
+    if (FILE *file = fopen(name.c_str(), "r")) {
+        fclose(file);
+        return true;
+    } else {
+        return false;
+    } 
+	}  
+
+class Random
+{
+public:
+	Random()
+	{
+		randomGen = std::mt19937(time(0));
+		posReal = std::uniform_real_distribution<float>(0, 1);
+		real = std::uniform_real_distribution<float>(-1, 1);
+	}
+
+	float Real()
+	{
+		return real(randomGen);
+	}
+	float PositiveReal()
+	{
+		return posReal(randomGen);
+	}
+private:
+	std::mt19937 randomGen;
+	std::uniform_real_distribution<float> posReal;
+	std::uniform_real_distribution<float> real;
+};
+	
 
 
 } //end namespace

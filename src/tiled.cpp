@@ -66,6 +66,24 @@ Map::Map(std::string filename)
 	this->tileWidth = std::atoi(mapInfo->first_attribute("tilewidth")->value());
 	this->tileHeight = std::atoi(mapInfo->first_attribute("tileheight")->value());
 
+	auto mapProps = mapInfo->first_node("properties");
+	if(mapProps)
+	{
+		for(auto propertyInfo = mapProps->first_node("property"); propertyInfo; propertyInfo = propertyInfo->next_sibling("property"))
+		{
+		std::string name = propertyInfo->first_attribute("name")->value();
+		std::string value = propertyInfo->first_attribute("value")->value();
+		if(name == "music")
+		{
+			this->props.music = value;
+		}
+		else
+		{
+			std::cout << "property " << name << " is assigned but never used!" << std::endl;
+		}
+		}
+	}
+
 	totalTiles = 0;
 	
 	for(auto tilesetInfo = mapInfo->first_node("tileset"); tilesetInfo; tilesetInfo = tilesetInfo->next_sibling("tileset"))
@@ -247,6 +265,45 @@ Properties fillPropStruct(rapidxml::xml_node<> *propertiesNode)
 		else if(name == "message")
 		{
 			props.message = value;
+		}
+
+		else if(name == "light")
+		{
+			if(value == "true")
+				props.light = true;
+			else if(value == "false")
+				props.light = false;
+			else
+				std::cout << "WARNING: property light did not have true or false value!" << std::endl;
+		}
+		else if(name == "gap")
+		{
+			if(value == "true")
+				props.gap = true;
+			else if(value == "false")
+				props.gap = false;
+			else
+				std::cout << "WARNING: property gap did not have true or false value!" << std::endl;
+		}
+
+		else if(name == "reactorRoom")
+		{
+			if(value == "true")
+				props.reactorRoom = true;
+			else if(value == "false")
+				props.reactorRoom = false;
+			else
+				std::cout << "WARNING: property " << name << " did not have true or false value!" << std::endl;
+		}
+
+		else if(name == "reactorTP")
+		{
+			if(value == "true")
+				props.reactorTP = true;
+			else if(value == "false")
+				props.reactorTP = false;
+			else
+				std::cout << "WARNING: property " << name << " did not have true or false value!" << std::endl;
 		}
 
 		else

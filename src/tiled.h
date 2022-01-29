@@ -26,7 +26,16 @@ struct Properties
 	bool camera = false;
 	bool playerSpawn = false;
 	bool enemySpawn = false;
+	bool light = false;
+	bool gap = false;
+	bool reactorTP = false;
+	bool reactorRoom = false;
 	std::string message = "";
+};
+
+struct MapProperties
+{
+	std::string music;
 };
 
 static Properties fillPropStruct(rapidxml::xml_node<> *propertiesNode);
@@ -92,6 +101,8 @@ public:
 	std::vector<Layer> layers;
 	std::vector<ObjectGroup> objectGroups;
 	std::vector<ImageLayer> imgLayer;
+	
+	MapProperties props;
 };
 
 } //namespace end

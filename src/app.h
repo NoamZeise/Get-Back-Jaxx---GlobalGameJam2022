@@ -28,9 +28,17 @@
 #include "animation.h"
 #include "message.h"
 #include "actors.h"
+#include "bullet.h"
 
 //#define TIME_APP_DRAW_UPDATE
 //#define MULTI_UPDATE_ON_SLOW_DRAW
+
+struct AssetBank
+{
+	std::vector<Animation> playerAnim;
+	std::vector<Animation> enemy1Anim;
+	Resource::Texture bullet;
+};
 
 class App
 {
@@ -56,6 +64,8 @@ private:
 	void postUpdate();
 	void draw();
 
+	void LoadMap(Map &map);
+
 	glm::vec2 correctedPos(glm::vec2 pos);
 	glm::vec2 correctedMouse();
 	
@@ -64,7 +74,6 @@ private:
 	int mWindowWidth, mWindowHeight;
 	Input previousInput;
 	Timer timer;
-	camera::freecam cam3D;
 	camera::camera2D cam2D;
 
 	std::thread submitDraw;
@@ -72,12 +81,18 @@ private:
 
 	float time = 0.0f;
 
-	Player player;
 	MessageManager msgManager;
+	Audio music;
+	Audio audio;
+	Map currentMap;
 	std::vector<MapMessage> messages;
-	
-	Audio sound;
-	Map testMap;
+	std::vector<Enemy> enemies;
+	Player player;
+	AssetBank assets;
+	std::vector<glm::vec4> staticColliders;
+	std::vector<glm::vec4> nonGapColliders;
+
+	std::vector<Bullet> bullets;
 };
 
 #endif

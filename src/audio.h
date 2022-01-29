@@ -11,6 +11,7 @@
 #include <iostream>
 #include <thread>
 #include <cstring>
+
 class Audio
 {
 public:
@@ -103,7 +104,7 @@ public:
 	}
 
 private:
-	int count = 0;
+	unsigned long count = 0;
 	std::string filename;
 	bool playing = false;
 	bool isMp3 = false;

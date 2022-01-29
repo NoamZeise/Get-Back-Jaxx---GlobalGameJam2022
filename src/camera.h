@@ -110,6 +110,8 @@ namespace camera
 		{
 			return glm::vec2(cameraArea.x, cameraArea.y);
 		}
+
+		glm::vec4 currentRoom = glm::vec4(0);
 	private:
 		glm::mat4 offset = glm::mat4(1.0f);
 		std::vector<glm::vec4> cameraRects;

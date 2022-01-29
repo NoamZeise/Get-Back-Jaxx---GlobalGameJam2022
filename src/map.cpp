@@ -18,15 +18,18 @@ Map::Map(std::string filename, Render &render)
 
 	for(const auto &layer: map.layers)
 	{
-		if(layer.props.collidable)
+		if(layer.props.collidable || layer.props.gap)
 		{
 			//TODO: make colliders more efficient by merging rects 
 			size_t i = 0;
 			for(unsigned int y = 0; y < map.height; y++)
 				for(unsigned int x = 0; x < map.width; x++)
 				{
-					if(layer.data[i++] != 0)
+					if(layer.data[i] != 0 && layer.props.collidable)
 						colliders.push_back(glm::vec4(x * map.tileWidth, y * map.tileHeight, map.tileWidth, map.tileHeight));
+					if(layer.data[i] != 0 && layer.props.gap)
+						gaps.push_back(glm::vec4(x * map.tileWidth, y * map.tileHeight, map.tileWidth, map.tileHeight/3));
+					i++;
 				}
 		}
 	}
@@ -60,8 +63,15 @@ Map::Map(std::string filename, Render &render)
 				messageAreas.push_back(MapMessage(glm::vec4(obj.x, obj.y, obj.w, obj.h), obj.props.message));
 			if(obj.props.playerSpawn)
 				playerSpawn = glm::vec2(obj.x, obj.y);
-			if(obj.props.enemySpawn)
+			if(obj.props.enemySpawn || objGroup.props.enemySpawn)
 				enemySpawns.push_back(MapEnemy(glm::vec2(obj.x, obj.y), EnemyTypes::Basic));
+			if(obj.props.light || objGroup.props.light)
+				lights.push_back(glm::vec2(obj.x, obj.y));
+			if(obj.props.reactorRoom || objGroup.props.reactorRoom)
+				reactorRoom = glm::vec4(obj.x, obj.y, obj.w, obj.h);
+			if(obj.props.reactorTP || objGroup.props.reactorTP)
+				reactorTP = glm::vec4(obj.x, obj.y, obj.w, obj.h);
+			
 		}
 	}
 
