@@ -30,6 +30,8 @@ struct Properties
 	bool gap = false;
 	bool reactorTP = false;
 	bool reactorRoom = false;
+	bool item = false;
+	bool checkpoint = false;
 	std::string message = "";
 };
 

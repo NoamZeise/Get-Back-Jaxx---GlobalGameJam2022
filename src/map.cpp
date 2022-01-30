@@ -71,7 +71,10 @@ Map::Map(std::string filename, Render &render)
 				reactorRoom = glm::vec4(obj.x, obj.y, obj.w, obj.h);
 			if(obj.props.reactorTP || objGroup.props.reactorTP)
 				reactorTP = glm::vec4(obj.x, obj.y, obj.w, obj.h);
-			
+			if(obj.props.item || objGroup.props.item)
+				items.push_back(glm::vec4(obj.x, obj.y, obj.w, obj.h));
+			if(obj.props.checkpoint || objGroup.props.checkpoint)
+				checkpoints.push_back(glm::vec4(obj.x, obj.y, obj.w, obj.h));
 		}
 	}
 

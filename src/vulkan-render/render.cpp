@@ -49,6 +49,11 @@ void Render::initRender(GLFWwindow* window)
 		perInstanceData.model[i] = glm::mat4(1.0f);
 		perInstanceData.normalMat[i] = glm::mat4(1.0f);
 	}
+
+	for(size_t i = 0; i < DS::MAX_2D_LIGHTS; i++)
+	{
+		lighting2DData.lights[i] = glm::vec2(0, 0);
+	}
 }
 
 Render::~Render()
@@ -87,7 +92,10 @@ void Render::initFrameResources()
 	initVulkan::CreateDescriptorSetLayout(mBase.device, &mTexturesDS, 
 		{VK_DESCRIPTOR_TYPE_SAMPLER, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE}, {1, Resource::MAX_TEXTURES_SUPPORTED}, 
 		VK_SHADER_STAGE_FRAGMENT_BIT);
-	initVulkan::CreateDescriptorSetLayout(mBase.device, &mLightingUbo.ds,
+	initVulkan::CreateDescriptorSetLayout(mBase.device, &mLighting2DSSBO.ds,
+		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER}, {1},
+		VK_SHADER_STAGE_FRAGMENT_BIT);
+	initVulkan::CreateDescriptorSetLayout(mBase.device, &mLightingPropsUbo.ds,
 		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER}, {1},
 		VK_SHADER_STAGE_FRAGMENT_BIT);
 #ifndef ONLY_2D
@@ -99,7 +107,7 @@ void Render::initFrameResources()
 #endif
 
 	initVulkan::graphicsPipeline(mBase.device, &pipeline2D, mSwapchain, mRenderPass, 
-	{ &mViewproj2DUbo.ds, &mPerInstanceSSBO.ds, &mTexturesDS,},
+	{ &mViewproj2DUbo.ds, &mPerInstanceSSBO.ds, &mTexturesDS, &mLighting2DSSBO.ds, &mLightingPropsUbo.ds},
 	{{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vectPushConstants)},
 	{VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(vectPushConstants), sizeof(fragPushConstants)}},
 	"shaders/vflat.spv", "shaders/fflat.spv");
@@ -108,11 +116,12 @@ void Render::initFrameResources()
 	#endif
 	mViewproj2DUbo.setPerUboProperties(mSwapchain.frameData.size(), sizeof(DS::viewProjection), DS::BufferType::Uniform);
 	mPerInstanceSSBO.setPerUboProperties(mSwapchain.frameData.size(), sizeof(DS::PerInstance), DS::BufferType::Storage);
-	mLightingUbo.setPerUboProperties(mSwapchain.frameData.size(), sizeof(DS::lighting), DS::BufferType::Uniform);
+	mLighting2DSSBO.setPerUboProperties(mSwapchain.frameData.size(), sizeof(DS::Lighting2D), DS::BufferType::Storage);
+	mLightingPropsUbo.setPerUboProperties(mSwapchain.frameData.size(), sizeof(DS::LightingTerms2D), DS::BufferType::Uniform);
 	#ifndef ONLY_2D
 	vkhelper::prepareShaderBufferSets(mBase, {&mViewproj3DUbo, &mViewproj2DUbo,  &mPerInstanceSSBO,  &mLightingUbo}, &shaderBuffer, &shaderMemory);
 	#else
-vkhelper::prepareShaderBufferSets(mBase, {&mViewproj2DUbo,  &mPerInstanceSSBO,  &mLightingUbo}, &shaderBuffer, &shaderMemory);
+vkhelper::prepareShaderBufferSets(mBase, {&mViewproj2DUbo,  &mPerInstanceSSBO,  &mLighting2DSSBO, &mLightingPropsUbo}, &shaderBuffer, &shaderMemory);
 	#endif
 	mTextureLoader.prepareFragmentDescriptorSet(mTexturesDS, mSwapchain.frameData.size());
 
@@ -130,7 +139,8 @@ void Render::destroyFrameResources()
 	mViewproj2DUbo.ds.destroySet(mBase.device);
 	mPerInstanceSSBO.ds.destroySet(mBase.device);
 	mTexturesDS.destroySet(mBase.device);
-	mLightingUbo.ds.destroySet(mBase.device);
+	mLighting2DSSBO.ds.destroySet(mBase.device);
+	mLightingPropsUbo.ds.destroySet(mBase.device);
 	for (size_t i = 0; i < mSwapchain.frameData.size(); i++)
 		vkDestroyFramebuffer(mBase.device, mSwapchain.frameData[i].framebuffer, nullptr);
 	#ifndef ONLY_2D
@@ -277,7 +287,10 @@ void Render::begin2DDraw()
 	m3DRender = false;
 #endif
 
+
 	mViewproj2DUbo.storeSetData(mImg, &viewProjectionData2D);
+	mLighting2DSSBO.storeSetData(mImg, &lighting2DData);
+	mLightingPropsUbo.storeSetData(mImg, &lightingPropsData);
 
 	pipeline2D.begin(mSwapchain.frameData[mImg].commandBuffer, mImg);
 }
@@ -371,7 +384,8 @@ void Render::DrawModel(Resource::Model model, glm::mat4 modelMatrix, glm::mat4 n
 		drawBatch();
 }
 #endif
-void Render::DrawQuad(const Resource::Texture& texID, glm::mat4 modelMatrix, glm::vec4 colour, glm::vec4 texOffset)
+
+void Render::DrawQuad(const Resource::Texture& texID, glm::mat4 modelMatrix, glm::vec4 colour, glm::vec4 texOffset, bool lighting)
 {
 if(currentIndex >= DS::MAX_BATCH_SIZE)
 	{
@@ -388,29 +402,36 @@ if(currentIndex >= DS::MAX_BATCH_SIZE)
 							0, sizeof(vectPushConstants), &vps);
 
 		mModelLoader.drawQuad(mSwapchain.frameData[mImg].commandBuffer, pipeline2D.layout, texID.ID,
-		 	1, 0, colour, texOffset);
+		 	1, 0, colour, texOffset, lighting);
 			vps.normalMat[3][3] = 0.0;
 		vkCmdPushConstants(mSwapchain.frameData[mImg].commandBuffer, pipeline2D.layout, VK_SHADER_STAGE_VERTEX_BIT,
 							0, sizeof(vectPushConstants), &vps);
 		return;
 	}
 
-	if( modelRuns != 0 && (texID.ID != currentTexture.ID || texOffset != currentTexOffset || colour != currentColour))
-		drawBatch();
+	if( modelRuns != 0 && 
+			(texID.ID != currentTexture.ID || texOffset != currentTexOffset ||
+				 colour != currentColour || lighting != currentLighting))
+					drawBatch();
 	//add model to buffer
 	currentTexture = texID;
 	currentTexOffset = texOffset;
 	currentColour = colour;
+	currentLighting = lighting;
 	perInstanceData.model[currentIndex + modelRuns] = modelMatrix;
 	//perInstanceData.normalMat[currentIndex + modelRuns] = glm::mat4(1.0f);
 	modelRuns++;
 	if(currentIndex + modelRuns == DS::MAX_BATCH_SIZE)
 		drawBatch();
 }
+void Render::DrawQuad(const Resource::Texture& texture, glm::mat4 modelMatrix, glm::vec4 colour, glm::vec4 texOffset)
+{
+	DrawQuad(texture, modelMatrix, colour, texOffset, true);
+}
 
 void Render::DrawQuad(const Resource::Texture& texture, glm::mat4 modelMatrix, glm::vec4 colour)
 {
-	DrawQuad(texture, modelMatrix, colour, glm::vec4(0, 0, 1, 1));
+	DrawQuad(texture, modelMatrix, colour, glm::vec4(0, 0, 1, 1), true);
 }
 
 void Render::DrawString(Resource::Font* font, std::string text, glm::vec2 position, float size, float rotate, glm::vec4 colour)
@@ -446,7 +467,7 @@ void Render::DrawString(Resource::Font* font, std::string text, glm::vec2 positi
 							0, sizeof(vectPushConstants), &vps);
 
 			mModelLoader.drawQuad(mSwapchain.frameData[mImg].commandBuffer, pipeline2D.layout, cTex->TextureID, 1, 0,
-			 colour, glm::vec4(0, 0, 1, 1));
+			 colour, glm::vec4(0, 0, 1, 1), false);
 		}
 		position.x += cTex->Advance * size;
 		
@@ -491,7 +512,7 @@ void Render::drawBatch()
 	{
 #endif
 		mModelLoader.drawQuad(mSwapchain.frameData[mImg].commandBuffer, pipeline2D.layout, currentTexture.ID, modelRuns, currentIndex,
-			currentColour, currentTexOffset);
+			currentColour, currentTexOffset, currentLighting);
 		vkCmdPushConstants(mSwapchain.frameData[mImg].commandBuffer, pipeline2D.layout, VK_SHADER_STAGE_VERTEX_BIT,
 							0, sizeof(vectPushConstants), &vps);
 #ifndef ONLY_2D
@@ -546,6 +567,7 @@ void Render::set2DViewMatrix(glm::mat4 view)
 {
 	viewProjectionData2D.view = view;
 }
+
 
 
 void Render::setViewMatrixAndFov(glm::mat4 view, float fov)

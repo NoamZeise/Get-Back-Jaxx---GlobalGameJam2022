@@ -15,6 +15,8 @@
 
 #include "timer.h"
 #include "input.h"
+#include "audio.h"
+#include "soundBank.h"
 
 #include <string>
 #include <iostream>
@@ -27,7 +29,7 @@ struct Message
 class MessageManager
 {
 public:
-	MessageManager(Render &render);
+	MessageManager(Render &render, Audio *audio);
 	MessageManager() {}
 	void Update(Timer &timer, Input &input);
 	void Draw(Render &render, glm::vec2 camOffset);
@@ -43,14 +45,17 @@ private:
 	std::vector<Message> messages;
 
 	glm::vec4 msgBoxOffset = glm::vec4(0);
-	float msgBoxWidth = 190;
-	int textSize = 7;
+	float msgBoxWidth = 298;
+	int textSize = 8;
 	int lineSpacing = 10;
 
 	int fontXOff = 10;
 	int fontYOff = 20;
 
 	Input prevInput;
+	
+	SoundEffectBank paperUp;
+	SoundEffectBank paperDown;
 };
 
 

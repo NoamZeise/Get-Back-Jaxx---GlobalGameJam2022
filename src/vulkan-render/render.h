@@ -52,8 +52,28 @@ public:
 	#endif
 	void DrawQuad(const Resource::Texture& texID, glm::mat4 modelMatrix, glm::vec4 colour);
 	void DrawQuad(const Resource::Texture& texID, glm::mat4 modelMatrix, glm::vec4 colour, glm::vec4 texOffset);
+	void DrawQuad(const Resource::Texture& texID, glm::mat4 modelMatrix, glm::vec4 colour, glm::vec4 texOffset, bool lighting);
 	void DrawString(Resource::Font* font, std::string text, glm::vec2 position, float size, float rotate, glm::vec4 colour);
   	float MeasureString(Resource::Font* font, std::string text, float size);
+	void setLights(std::vector<glm::vec2> &lights)
+	{
+		for(unsigned int i = 0; i < DS::MAX_2D_LIGHTS; i++)
+		{
+			if(i >= lights.size())
+				lighting2DData.lights[i] = glm::vec2(0);
+			else
+			{
+				lighting2DData.lights[i] = lights[i];
+			}
+		}
+	}
+
+	void setLightingProps(float linear, float quadratic)
+	{
+		lightingPropsData.linear = linear;
+		lightingPropsData.quadratic = quadratic;
+	}
+
 	bool framebufferResized = false;
 private:
 	GLFWwindow* mWindow;
@@ -81,12 +101,14 @@ private:
 	#endif
 	DS::ShaderBufferSet mViewproj2DUbo;
 	DS::ShaderBufferSet mPerInstanceSSBO;
-	DS::ShaderBufferSet mLightingUbo;
+	DS::ShaderBufferSet mLighting2DSSBO;
+	DS::ShaderBufferSet mLightingPropsUbo;
 	DS::DescriptorSet mTexturesDS;
 
 	DS::viewProjection viewProjectionData3D;
 	DS::viewProjection viewProjectionData2D;
-	DS::lighting lightingData;
+	DS::Lighting2D lighting2DData;
+	DS::LightingTerms2D lightingPropsData;
 	DS::PerInstance perInstanceData;
 
 	Resource::TextureLoader mTextureLoader;
@@ -109,6 +131,7 @@ private:
 	Resource::Texture currentTexture;
 	glm::vec4 currentTexOffset = glm::vec4(0, 0, 1, 1);
 	glm::vec4 currentColour = glm::vec4(1, 1, 1, 1);
+	bool currentLighting = true;
 	
 	void initRender(GLFWwindow* window);
 	void initFrameResources();

@@ -103,6 +103,15 @@ protected:
 	bool hit = false;
 };
 
+class Particle : public Bullet
+{
+	Particle(Resource::Texture texture, glm::vec2 position, glm::vec2 velocity)
+		: Bullet(texture, position, velocity)
+		{
+			
+		}
+};
+
 
 
 #endif

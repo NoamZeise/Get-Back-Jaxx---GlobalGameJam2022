@@ -91,9 +91,10 @@ struct vectPushConstants
 
 struct fragPushConstants
 {
-	glm::vec4 colour;
-	glm::vec4 texOffset;
-	uint32_t TexID;
+	alignas(16) glm::vec4 colour;
+	alignas(16) glm::vec4 texOffset;
+	alignas(4) uint32_t TexID;
+	alignas(4) uint32_t useLighting;
 };
 
 

@@ -29,7 +29,7 @@
 #include "message.h"
 #include "actors.h"
 #include "bullet.h"
-
+#include "soundBank.h"
 //#define TIME_APP_DRAW_UPDATE
 //#define MULTI_UPDATE_ON_SLOW_DRAW
 
@@ -38,6 +38,12 @@ struct AssetBank
 	std::vector<Animation> playerAnim;
 	std::vector<Animation> enemy1Anim;
 	Resource::Texture bullet;
+	Audio reactorHum;
+	Audio backInTime;
+	SoundEffectBank reactorHiss;
+	SoundEffectBank waterDrops;
+	Map forgottenMap;
+	Map remeberedMap;
 };
 
 class App
@@ -67,6 +73,8 @@ private:
 	void LoadMap(Map &map);
 
 	glm::vec2 correctedPos(glm::vec2 pos);
+	glm::vec2 appToScreen(glm::vec2 pos);
+
 	glm::vec2 correctedMouse();
 	
 	GLFWwindow* mWindow;
@@ -93,6 +101,11 @@ private:
 	std::vector<glm::vec4> nonGapColliders;
 
 	std::vector<Bullet> bullets;
+	bool inReactor = false;
+
+	int itemCount = 0;
+
+	
 };
 
 #endif

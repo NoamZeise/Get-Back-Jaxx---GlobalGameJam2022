@@ -45,9 +45,12 @@ public:
 
 	virtual void Draw(Render &render, glm::vec4 cameraRect)
 	{
+		if(gh::colliding(spriteRect, cameraRect))
+		{
 		if(pushTimer < pushDelay)
 			colour = glm::vec4(1, 0, 0, 1);
 		render.DrawQuad(currentFrame.tex, spriteMat, colour, currentFrame.textureOffset);
+		}
 	}
 
 	glm::vec2 getMid()
@@ -169,7 +172,7 @@ public:
 	bool Shoot()
 	{
 		if(shootTimer > shootDelay)
-		{
+			{
 			shootTimer = 0;
 			shootDelay = baseShootDelay + (rand.Real() * 1000);
 			return true;

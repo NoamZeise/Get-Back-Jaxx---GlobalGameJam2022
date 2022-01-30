@@ -59,12 +59,17 @@ void ModelLoader::drawModel(VkCommandBuffer cmdBuff, VkPipelineLayout layout, Mo
 	}
 }
 #endif
-void ModelLoader::drawQuad(VkCommandBuffer cmdBuff, VkPipelineLayout layout, unsigned int texID, size_t count, size_t instanceOffset, glm::vec4 colour, glm::vec4 texOffset)
+void ModelLoader::drawQuad(VkCommandBuffer cmdBuff, VkPipelineLayout layout, unsigned int texID, size_t count, size_t instanceOffset, glm::vec4 colour, glm::vec4 texOffset, bool lighting)
 {
+	uint32_t lightingI = 0;
+	if(lighting)
+		lightingI = 10;
+
 		fragPushConstants fps{
 			colour,
 			texOffset,
-			texID
+			texID,
+			lightingI
 		};   
 		vkCmdPushConstants(cmdBuff, layout, VK_SHADER_STAGE_FRAGMENT_BIT,
 			sizeof(vectPushConstants), sizeof(fragPushConstants), &fps);

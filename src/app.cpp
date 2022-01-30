@@ -52,7 +52,10 @@ App::~App()
 
 void App::loadAssets()
 {
-	currentMap =  Map("maps/forgottenLab.tmx", *mRender);
+	assets.forgottenMap =  Map("maps/forgottenLab.tmx", *mRender);
+	assets.forgottenMap.name = "forgotten";
+	assets.remeberedMap =  Map("maps/rememberedLab.tmx", *mRender);
+	assets.remeberedMap.name = "remebered";
 
 	assets.playerAnim = {
 		Animation(mRender->LoadTexture("textures/sprites/player/runUp.png"), 100, 16),
@@ -70,9 +73,16 @@ void App::loadAssets()
 	};
 
 	assets.bullet = mRender->LoadTexture("textures/sprites/bullet.png");
-	msgManager = MessageManager(*mRender);
+	msgManager = MessageManager(*mRender, &audio);
 
+	currentMap = assets.forgottenMap;
 	LoadMap(currentMap);
+	messages.clear();
+	messages = currentMap.getMapMessages();
+
+	assets.reactorHiss = SoundEffectBank("audio/sfx/reactorA/pressure/", 10000.0f, 5000.0f, 0.9f, &audio);
+	assets.reactorHum = Audio("audio/sfx/reactorA/hum/1.mp3");
+	assets.waterDrops = SoundEffectBank("audio/sfx/water-droplet/", 8000.0f, 3000.0f, 0.2f, &audio);
 
 	mRender->endResourceLoad();
 }
@@ -100,12 +110,18 @@ void App::resize(int windowWidth, int windowHeight)
 void App::LoadMap(Map &map)
 {
 	bullets.clear();
-	messages.clear();
-	messages = currentMap.getMapMessages();
 	music.stop();
 	music = Audio(currentMap.getMusic());
-	music.loop();
+	//music.loop();
 	music.setVolume(0.3);
+	if(map.name == "forgotten")
+	{
+		mRender->setLightingProps(0.001f, 0.0006f);
+	}
+	else
+	{
+		mRender->setLightingProps(0.005f, 0.0001f);
+	}
 	staticColliders.clear();
 	staticColliders = currentMap.getGapColliders();
 	nonGapColliders.clear();
@@ -114,13 +130,19 @@ void App::LoadMap(Map &map)
 	cam2D.SetCameraOffset(map.getPlayerSpawn());
 	cam2D.setCameraRects(currentMap.getCameraRects());
 	cam2D.setCameraMapRect(currentMap.getMapRect());
-	player = Player(assets.playerAnim, currentMap.getPlayerSpawn(), &audio);
+	if(currentMap.lastCheckpoint != glm::vec4(0))
+		player = Player(assets.playerAnim, currentMap.lastCheckpoint, &audio);
+	else
+		player = Player(assets.playerAnim, currentMap.getPlayerSpawn(), &audio);
+	player.Update(timer, input, staticColliders);
 	enemies.clear();
 	auto eSpawns = currentMap.getEnemySpawns();
 	for(const auto &e: eSpawns)
 	{
 		if(e.type == EnemyTypes::Basic)
 			enemies.push_back(Enemy(assets.enemy1Anim, e.spawn, &audio));
+		enemies.back().Update(timer, staticColliders, player.getMid());
+		enemies.back().active = false;
 	}
 }
 
@@ -137,23 +159,55 @@ void App::update()
 	}
 	else
 	{
-
+		
+		
+		assets.waterDrops.Play(timer);
 		player.Update(timer, input, staticColliders);
-
+		if(gh::colliding(currentMap.getReactorRoom(), player.rect()))
+		{
+			assets.reactorHiss.Play(timer);
+			if(!inReactor)
+			{
+				assets.reactorHum.loop();
+				assets.reactorHum.setVolume(1.0f);
+				music.pause();
+			}
+			inReactor = true;
+		}
+		else
+		{
+			if(inReactor)
+			{
+				music.play();
+							assets.reactorHum.stop();
+			}
+			inReactor = false;
+		}
+		
+		
+		for(unsigned int i = 0; i < currentMap.checkpoints.size(); i++)
+		{
+			if(gh::colliding(currentMap.checkpoints[i], player.getHitBox()))
+			{
+				currentMap.lastCheckpoint = currentMap.checkpoints[i];
+			}
+		}
+		
 		auto playerMid =  player.getMid();
 		for(unsigned int i = 0; i < enemies.size(); i++)
 		{
 			enemies[i].Update(timer, staticColliders, playerMid);
-			if(gh::colliding(enemies[i].getHitBox(), cam2D.currentRoom))
+			if(!enemies[i].active)
 			{
-				enemies[i].active = true;
+				if(gh::colliding(enemies[i].getHitBox(), cam2D.currentRoom))
+				{
+					enemies[i].active = true;
+				}
 			}
 			else
-				enemies[i].active = false;
-			if(enemies[i].active)
 			{
 				if(gh::colliding(enemies[i].getHitBox(), player.getDamageRect()))
-					enemies[i].Hurt(player.getMid());
+					enemies[i].Hurt(playerMid);
 				if(gh::colliding(enemies[i].getHitBox(), player.getHitBox()))
 					player.Hurt(enemies[i].getMid());
 
@@ -174,18 +228,19 @@ void App::update()
 					bullets.push_back(Bullet(
 						assets.bullet, 
 						enemies[i].getMid(),
-						glm::normalize(player.getMid() - enemies[i].getMid()) * 0.1f));
+						glm::normalize(playerMid - enemies[i].getMid()) * 0.1f));
 				}
 			}
 			if(!enemies[i].Alive())
 				enemies.erase(enemies.begin() + i--);
 		}
+		
 		for(unsigned int i = 0; i < bullets.size(); i++)
 		{
 			bullets[i].Update(timer, nonGapColliders);
 			if(gh::colliding(bullets[i].getRect(), player.getDamageRect()))
 			{
-				bullets[i].Reverse(player.getMid(), glm::vec4(1));
+				bullets[i].Reverse(playerMid, glm::vec4(1));
 				bullets.push_back(bullets[i]);
 				bullets.erase(bullets.begin() + i--);
 				continue;
@@ -213,15 +268,95 @@ void App::update()
 		if(!player.Alive())
 			LoadMap(currentMap);
 
+		bool messageAdded = false;
 		for(unsigned int i = 0; i < messages.size(); i++)
 			if(gh::colliding(player.rect(), messages[i].rect))
 			{
 				for(const auto &s: messages[i].messages)
+				{
 					msgManager.AddMessage(*mRender, s);
+					messageAdded = true;
+				}
 				messages.erase(messages.begin() + i--);
 			}
+			if(!messageAdded)
+			{
+				for(unsigned int i = 0; i < currentMap.items.size(); i++)
+				{
+					if(gh::colliding(currentMap.items[i], player.rect()))
+					{
+						itemCount++;
+						if(currentMap.lastCheckpoint == glm::vec4(0))
+							player.Reset(currentMap.getPlayerSpawn());
+						else
+						{
+							player.Reset(
+								glm::vec2(currentMap.lastCheckpoint.x + currentMap.lastCheckpoint.z/2,
+											currentMap.lastCheckpoint.y + currentMap.lastCheckpoint.w/2));
+						}
+
+						for(unsigned int e = 0; e < enemies.size(); e++)
+						{
+							if(enemies[e].active)
+								enemies.erase(enemies.begin() + e--);
+						}
+					}
+				}
+			if(itemCount >= 4)
+			{
+			if(gh::colliding(player.getHitBox(), currentMap.getReactorTP()))
+			{
+				if(currentMap.name == assets.forgottenMap.name)
+				{
+					assets.backInTime = Audio("audio/music/BackInTime.mp3");
+					assets.backInTime.setVolume(0.7f);
+					assets.backInTime.play();
+					currentMap = assets.remeberedMap;
+					LoadMap(currentMap);
+					messages.clear();
+					messages = currentMap.getMapMessages();
+				}
+				else
+				{
+					glfwSetWindowShouldClose(mWindow, true);
+				}
+			}
+		}
+		}
+		
+		
 
 	}
+
+	std::vector<glm::vec2> lights;
+	glm::vec4 camExpanded = cam2D.getCameraArea();
+	camExpanded.x -= 300;
+	camExpanded.y -= 300;
+	camExpanded.z += 600;
+	camExpanded.w += 600;
+	glm::vec2 playerSc = player.getMid();
+	playerSc.x -= cam2D.getCameraOffset().x;
+	playerSc.y -= cam2D.getCameraOffset().y;
+	lights.push_back(appToScreen(playerSc));
+	for(auto &b: bullets)
+	{
+		glm::vec2 screenCoords = b.getMid();
+		screenCoords.x -= cam2D.getCameraOffset().x;
+		screenCoords.y -= cam2D.getCameraOffset().y;
+		lights.push_back(appToScreen(screenCoords));
+	}
+	for(const auto &l: currentMap.lights)
+	{
+		if(gh::contains(l, camExpanded))
+		{
+			glm::vec2 screenCoords = l;
+			screenCoords.x -= cam2D.getCameraOffset().x;
+			screenCoords.y -= cam2D.getCameraOffset().y;
+					
+			lights.push_back(appToScreen(screenCoords));
+		}
+	}
+	mRender->setLights(lights);
 
 	postUpdate();
 #ifdef TIME_APP_DRAW_UPDATE
@@ -289,6 +424,13 @@ void App::draw()
 glm::vec2 App::correctedPos(glm::vec2 pos)
 {
 	return glm::vec2(pos.x * ((float)settings::TARGET_WIDTH / (float)mWindowWidth), pos.y * ((float)settings::TARGET_HEIGHT / (float)mWindowHeight));
+}
+
+glm::vec2 App::appToScreen(glm::vec2 pos)
+{
+	return 
+	glm::vec2(pos.x * ((float)mWindowWidth / (float)settings::TARGET_WIDTH),
+	          pos.y * ((float)mWindowHeight / (float)settings::TARGET_HEIGHT));
 }
 
 glm::vec2 App::correctedMouse()

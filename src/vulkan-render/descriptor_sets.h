@@ -51,6 +51,18 @@ struct lighting
 	alignas(16) glm::vec4 direction;
 };
 
+const int MAX_2D_LIGHTS = 50;
+struct Lighting2D
+{
+	alignas(8) glm::vec2 lights[MAX_2D_LIGHTS];
+};
+
+struct LightingTerms2D
+{
+	alignas(4) float linear;
+	alignas(4) float quadratic;
+};
+
 struct DescriptorSet
 {
 	void destroySet(VkDevice device)
