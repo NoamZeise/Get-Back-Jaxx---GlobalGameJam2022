@@ -93,6 +93,7 @@ void Actor::Hurt(glm::vec2 hurtLoc)
 Player::Player(std::vector<Animation> animations, glm::vec2 position, Audio *audio) :
 				Actor(animations, position, audio)
 {
+	health = 5;
 	dirtyFootsteps = SoundEffectBank("audio/sfx/dirty-footsteps/", 400, 50, 0.7, audio);
 	cleanFootsteps = SoundEffectBank("audio/sfx/clean-footsteps/", 400, 50, 0.7, audio);
 	weaponSound = SoundEffectBank("audio/sfx/machette-swing/", 500, 50, 0.8, audio);

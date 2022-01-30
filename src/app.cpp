@@ -315,14 +315,10 @@ void App::update()
 					if(gh::colliding(currentMap.items[i], player.getHitBox()))
 					{
 						itemCount++;
-						if(currentMap.lastCheckpoint == glm::vec4(0))
-							player.Reset(currentMap.getPlayerSpawn());
-						else
-						{
-							player.Reset(
-								glm::vec2(currentMap.lastCheckpoint.x + currentMap.lastCheckpoint.z/2,
-											currentMap.lastCheckpoint.y + currentMap.lastCheckpoint.w/2));
-						}
+							if(currentMap.lastCheckpoint != glm::vec4(0))
+		player = Player(assets.playerAnim, currentMap.lastCheckpoint, &audio);
+	else
+		player = Player(assets.playerAnim, currentMap.getPlayerSpawn(), &audio);
 
 						for(unsigned int e = 0; e < enemies.size(); e++)
 						{

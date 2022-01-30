@@ -155,6 +155,7 @@ public:
 	Enemy(std::vector<Animation> animations, glm::vec2 position, Audio *audio):
 				Actor(animations, position, audio)
 	{
+		health = 2;
 		max_speed = 0.03f;
 		velocity.x = max_speed;
 		stabbed = SoundEffectBank("audio/sfx/stab/wet/", 100, 10, 0.4, audio);
