@@ -32,6 +32,8 @@ struct Properties
 	bool reactorRoom = false;
 	bool item = false;
 	bool checkpoint = false;
+	bool scientist = false;
+	bool door = false;
 	std::string message = "";
 };
 

@@ -15,6 +15,7 @@ Map::Map(std::string filename, Render &render)
 			tileMats[index] = vkhelper::calcMatFromRect(tileRects[index], 0);
 			toDraw[index++] = false;
 		}
+		
 
 	for(const auto &layer: map.layers)
 	{
@@ -75,6 +76,10 @@ Map::Map(std::string filename, Render &render)
 				items.push_back(glm::vec4(obj.x, obj.y, obj.w, obj.h));
 			if(obj.props.checkpoint || objGroup.props.checkpoint)
 				checkpoints.push_back(glm::vec4(obj.x, obj.y, obj.w, obj.h));
+			if(obj.props.door || objGroup.props.door)
+				doors.push_back(glm::vec4(obj.x, obj.y, obj.w, obj.h));
+			if(obj.props.scientist || objGroup.props.scientist)
+				scientist.push_back(glm::vec2(obj.x, obj.y));
 		}
 	}
 

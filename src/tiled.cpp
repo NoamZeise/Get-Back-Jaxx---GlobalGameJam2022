@@ -324,7 +324,24 @@ Properties fillPropStruct(rapidxml::xml_node<> *propertiesNode)
 			else
 				std::cout << "WARNING: property " << name << " did not have true or false value!" << std::endl;
 		}
-
+		else if(name == "door")
+		{
+			if(value == "true")
+				props.door = true;
+			else if(value == "false")
+				props.door = false;
+			else
+				std::cout << "WARNING: property " << name << " did not have true or false value!" << std::endl;
+		}
+		else if(name == "scientistSpawn")
+		{
+			if(value == "true")
+				props.scientist = true;
+			else if(value == "false")
+				props.scientist = false;
+			else
+				std::cout << "WARNING: property " << name << " did not have true or false value!" << std::endl;
+		}
 		else
 		{
 			std::cout << "WARNING: property " << name << " not recognised!\n";

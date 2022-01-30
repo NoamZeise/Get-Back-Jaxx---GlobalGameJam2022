@@ -3,6 +3,7 @@
 
 #include <glm/glm.hpp>
 #include <vector>
+#include <algorithm>
 #include "vulkan-render/texture_loader.h"
 #include "vulkan-render/vkhelper.h"
 #include "timer.h"
@@ -69,6 +70,31 @@ public:
 			frames[i].size = glm::vec2(FrameWidth, texture.dim.y);
 		}
 	}
+
+	Animation(Resource::Texture texture, float delay, float FrameWidth, bool invertX, bool reverse)
+	{
+		frames.resize(texture.dim.x / FrameWidth);
+		
+		for(unsigned int i = 0; i < frames.size(); i++)
+		{
+			frames[i].tex = texture;
+			if(invertX)
+			{
+				frames[i].textureOffset = vkhelper::calcTexOffset
+				(texture.dim, glm::vec4((i+1) * FrameWidth, 0, -FrameWidth, texture.dim.y));
+			}
+			else
+			{
+				frames[i].textureOffset = vkhelper::calcTexOffset
+					(texture.dim, glm::vec4(i * FrameWidth, 0, FrameWidth, texture.dim.y));
+			}
+			frames[i].delay = delay;
+			totalDuration += delay;
+			frames[i].size = glm::vec2(FrameWidth, texture.dim.y);
+		}
+		if(reverse)
+			std::reverse(frames.begin(), frames.end());
+	}
 	
 	Animation(Resource::Texture texture, float delay, float FrameWidth, float FrameHeight, float yOffset, int frameCount)
 	{
@@ -116,8 +142,28 @@ public:
 		return frames[current];
 	}
 
+	Frame PlayOnce(Timer &timer)
+	{
+		if(!done)
+		{
+		frameTimer += timer.FrameElapsed();
+		if(frameTimer > frames[current].delay)
+		{
+			frameTimer = 0;
+			current++;
+			if(current >= frames.size())
+			{
+				done = true;
+				current--;
+			}
+		}
+		}
+		return frames[current];
+	}
+
 	void Reset()
 	{
+		done = false;
 		current = 0;
 	}
 
@@ -131,6 +177,7 @@ private:
 	std::vector<Frame> frames;
 	float frameTimer = 0;
 	float totalDuration = 0;
+	bool done = false;
 };
 
 

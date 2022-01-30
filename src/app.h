@@ -37,7 +37,11 @@ struct AssetBank
 {
 	std::vector<Animation> playerAnim;
 	std::vector<Animation> enemy1Anim;
+	std::vector<Animation> oldDoor;
+	std::vector<Animation> newDoor;
+	Resource::Texture scientist;
 	Resource::Texture bullet;
+	Resource::Texture items;
 	Audio reactorHum;
 	Audio backInTime;
 	SoundEffectBank reactorHiss;
@@ -101,11 +105,10 @@ private:
 	std::vector<glm::vec4> nonGapColliders;
 
 	std::vector<Bullet> bullets;
+	std::vector<Door> doors;
 	bool inReactor = false;
 
 	int itemCount = 0;
-
-	
 };
 
 #endif

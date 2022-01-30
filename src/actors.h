@@ -35,8 +35,10 @@ public:
 	Actor(std::vector<Animation> animations, glm::vec2 position, Audio *audio)
 	{
 		this->animations = animations;
+		direction = AnimationType::Down;
 		currentFrame = animations[Down].getFrame(0);
-		this->spriteRect = glm::vec4(position.x, position.y, currentFrame.tex.dim.x, currentFrame.tex.dim.y);
+		this->spriteRect = glm::vec4(position.x, position.y, currentFrame.size.x, currentFrame.size.y);
+		this->hitbox = spriteRect;
 		this->audio = audio;
 	}
 	Actor() {}
@@ -97,6 +99,7 @@ protected:
 	glm::mat4 spriteMat;
 	glm::vec2 velocity = glm::vec2(0);
 	AnimationType direction;
+	AnimationType prevAnim;
 
 	int health = 3;
 	int max_health = 3;
@@ -110,6 +113,8 @@ protected:
 	glm::vec2 pushDir = glm::vec2(0);
 	Audio* audio;
 	glm::vec4 colour = glm::vec4(1.0f);
+	glm::vec4 hitboxOffset = glm::vec4(0, 0, 0, 0);
+
 };
 
 
@@ -167,9 +172,9 @@ public:
 		Actor::Hurt(hurtLoc);
 	}
 
-	void Update(Timer &timer, std::vector<glm::vec4> &colliders, glm::vec2 player);
+	virtual void Update(Timer &timer, std::vector<glm::vec4> &colliders, glm::vec2 player);
 
-	bool Shoot()
+	virtual bool Shoot()
 	{
 		if(shootTimer > shootDelay)
 			{
@@ -188,7 +193,7 @@ public:
 
 
 	bool active = true;
-private:
+protected:
 	SoundEffectBank stabbed; 
 	float shootDelay = 3000;
 	float baseShootDelay = 3000;
@@ -196,6 +201,93 @@ private:
 	float shootTimer = 0;
 };
 
+
+class Scientist : public Enemy
+{
+public:
+	Scientist(Resource::Texture texture, glm::vec2 position, Audio *audio):
+				Enemy({Animation(texture, 200, 22), Animation(texture, 200, 22), Animation(texture, 200, 22), Animation(texture, 200, 22)}, position, audio)
+	{
+		stabbed = SoundEffectBank("audio/sfx/stab/dry/", 100, 10, 0.4, audio);
+		shootDelay = 0;
+		direction = AnimationType::Up;
+	}
+
+	bool Shoot() override
+	{
+		return false;
+	}
+
+	void Update(Timer &timer, std::vector<glm::vec4> &colliders, glm::vec2 player) override
+	{
+		shootDelay = 0;
+		direction = AnimationType::Up;
+		spriteRect = hitbox;
+		velocity = glm::vec2(0, 0);
+		Actor::Update(timer, colliders);
+		currentFrame = animations[AnimationType::Up].getFrame(0);
+	}
+};
+
+class Door: public Enemy
+{
+	public:
+	Door(std::vector<Animation> animations, glm::vec2 position, Audio *audio):
+				Enemy(animations, position, audio)
+	{
+		shootDelay = 0;
+		open = SoundEffectBank("audio/sfx/door/open/", 100, 10, 0.4, audio);
+		close = SoundEffectBank("audio/sfx/door/close/", 100, 10, 0.4, audio);
+	}
+
+	bool Shoot() override
+	{
+		return false;
+	}
+
+	void Update(Timer &timer, std::vector<glm::vec4> &colliders, glm::vec2 player) override
+	{
+		
+		spriteRect = hitbox;
+		velocity = glm::vec2(0, 0);
+		float dist = abs(hitbox.x - player.x) + abs(hitbox.y - player.y);
+		bool inRange = (dist < range);
+		if(inRange && !lastInRange)
+		{
+			open.PlayOnce();
+		}
+		if(!inRange && lastInRange)
+		{
+			close.PlayOnce();
+		}
+
+		if(inRange)
+		{
+			currentFrame = animations[AnimationType::Up].PlayOnce(timer);
+			animations[AnimationType::Down].Reset();
+		}
+		else
+		{
+			currentFrame = animations[AnimationType::Down].PlayOnce(timer);
+			animations[AnimationType::Up].Reset();
+		}
+		lastInRange = inRange;
+
+				colour = glm::vec4(1.0f);
+		spriteMat = vkhelper::calcMatFromRect(spriteRect, 0);
+	}
+
+	void Hurt(glm::vec2 hurtLoc) override
+	{
+		
+	}
+private:
+	glm::vec2 lastPlayerPos = glm::vec2(0);
+	float range = 150;
+	bool lastInRange = false;
+	SoundEffectBank open;
+	SoundEffectBank close;
+};
 
 
 

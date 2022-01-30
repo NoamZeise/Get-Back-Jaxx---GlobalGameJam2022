@@ -81,6 +81,9 @@ public:
 	glm::vec4 lastCheckpoint = glm::vec4(0);
 	std::vector<glm::vec2> lights;
 
+	std::vector<glm::vec2> doors;
+	std::vector<glm::vec2> scientist;
+
 private:
 	tiled::Map map;
 	std::vector<glm::mat4> tileMats;

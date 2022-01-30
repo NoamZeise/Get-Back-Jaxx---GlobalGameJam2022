@@ -10,7 +10,7 @@ App::App()
 	if (!glfwInit())
 			throw std::runtime_error("failed to initialise glfw!");
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); //using vulkan not openGL
-	mWindow = glfwCreateWindow(mWindowWidth, mWindowHeight, "GGJ22", nullptr, nullptr);
+	mWindow = glfwCreateWindow(mWindowWidth, mWindowHeight, "Get Back Jaxx", nullptr, nullptr);
 	if(!mWindow)
 	{
 		glfwTerminate();
@@ -58,20 +58,27 @@ void App::loadAssets()
 	assets.remeberedMap.name = "remebered";
 
 	assets.playerAnim = {
-		Animation(mRender->LoadTexture("textures/sprites/player/runUp.png"), 100, 16),
-		Animation(mRender->LoadTexture("textures/sprites/player/runDown.png"), 100, 16),
-		Animation(mRender->LoadTexture("textures/sprites/player/runRight.png"), 100, 17, true),
-		Animation(mRender->LoadTexture("textures/sprites/player/runRight.png"), 100, 17),
-		Animation(mRender->LoadTexture("textures/sprites/player/weapon.png"), 20, 15)
+		Animation(mRender->LoadTexture("textures/sprites/player/character-right-51-walk.png"), 200, 51),
+		Animation(mRender->LoadTexture("textures/sprites/player/character-right-51-walk.png"), 200, 51),
+		Animation(mRender->LoadTexture("textures/sprites/player/character-right-51-walk.png"), 200, 51, true),
+		Animation(mRender->LoadTexture("textures/sprites/player/character-right-51-walk.png"), 200, 51),
+		Animation(mRender->LoadTexture("textures/sprites/player/weapon.png"), 20, 45)
 		};
 	assets.enemy1Anim =  {
-		Animation(mRender->LoadTexture("textures/sprites/enemy1/up-22.png"), 200, 22),
-		Animation(mRender->LoadTexture("textures/sprites/enemy1/down-22.png"), 200, 22),
-		Animation(mRender->LoadTexture("textures/sprites/enemy1/right-18.png"), 200, 18, true),
-		Animation(mRender->LoadTexture("textures/sprites/enemy1/right-18.png"), 200, 18),
-		Animation(mRender->LoadTexture("textures/sprites/enemy1/right-18.png"), 200, 18)
+		Animation(mRender->LoadTexture("textures/sprites/enemy1/walk.png"), 200, 71),
+		Animation(mRender->LoadTexture("textures/sprites/enemy1/walk.png"), 200, 71),
+		Animation(mRender->LoadTexture("textures/sprites/enemy1/walk.png"), 200, 71),
+		Animation(mRender->LoadTexture("textures/sprites/enemy1/walk.png"), 200, 71, true),
+		Animation(mRender->LoadTexture("textures/sprites/enemy1/walk.png"), 200, 71)
 	};
 
+	assets.scientist = mRender->LoadTexture("textures/sprites/enemy1/down-22.png");
+	assets.newDoor = {
+		Animation(mRender->LoadTexture("textures/new_door_anim.png"), 300, 32),
+		Animation(mRender->LoadTexture("textures/new_door_anim.png"), 300, 32, false, true) };
+	assets.oldDoor = {
+		Animation(mRender->LoadTexture("textures/old_door_anim.png"), 300, 32),
+		Animation(mRender->LoadTexture("textures/old_door_anim.png"), 300, 32, false, true) };
 	assets.bullet = mRender->LoadTexture("textures/sprites/bullet.png");
 	msgManager = MessageManager(*mRender, &audio);
 
@@ -82,7 +89,9 @@ void App::loadAssets()
 
 	assets.reactorHiss = SoundEffectBank("audio/sfx/reactorA/pressure/", 10000.0f, 5000.0f, 0.9f, &audio);
 	assets.reactorHum = Audio("audio/sfx/reactorA/hum/1.mp3");
-	assets.waterDrops = SoundEffectBank("audio/sfx/water-droplet/", 8000.0f, 3000.0f, 0.2f, &audio);
+	assets.waterDrops = SoundEffectBank("audio/sfx/water-droplet/", 8000.0f, 3000.0f, 0.1f, &audio);
+
+	assets.items = mRender->LoadTexture("textures/collect_items.png");
 
 	mRender->endResourceLoad();
 }
@@ -112,7 +121,7 @@ void App::LoadMap(Map &map)
 	bullets.clear();
 	music.stop();
 	music = Audio(currentMap.getMusic());
-	//music.loop();
+	music.loop();
 	music.setVolume(0.3);
 	if(map.name == "forgotten")
 	{
@@ -144,6 +153,22 @@ void App::LoadMap(Map &map)
 		enemies.back().Update(timer, staticColliders, player.getMid());
 		enemies.back().active = false;
 	}
+
+	for(const auto &d: map.doors)
+	{
+		if(map.name == "forgotten")
+			doors.push_back(Door(assets.oldDoor, d, &audio));
+		else
+			doors.push_back(Door(assets.newDoor, d, &audio));
+		//enemies.back().Update(timer, staticColliders, player.getMid());
+		//enemies.back().active = false;
+	}
+	for(const auto &s: map.scientist)
+	{
+		enemies.push_back(Scientist(assets.scientist, s, &audio));
+		enemies.back().Update(timer, staticColliders, player.getMid());
+		enemies.back().active = false;
+	}
 }
 
 void App::update()
@@ -159,7 +184,6 @@ void App::update()
 	}
 	else
 	{
-		
 		
 		assets.waterDrops.Play(timer);
 		player.Update(timer, input, staticColliders);
@@ -223,7 +247,7 @@ void App::update()
 					}
 				}
 
-				if(enemies[i].Shoot())
+				if(currentMap.name == "forgotten" && enemies[i].Shoot())
 				{
 					bullets.push_back(Bullet(
 						assets.bullet, 
@@ -233,6 +257,11 @@ void App::update()
 			}
 			if(!enemies[i].Alive())
 				enemies.erase(enemies.begin() + i--);
+		}
+
+		for(auto &d: doors)
+		{
+			d.Update(timer, staticColliders, playerMid);
 		}
 		
 		for(unsigned int i = 0; i < bullets.size(); i++)
@@ -270,7 +299,7 @@ void App::update()
 
 		bool messageAdded = false;
 		for(unsigned int i = 0; i < messages.size(); i++)
-			if(gh::colliding(player.rect(), messages[i].rect))
+			if(gh::colliding(player.getHitBox(), messages[i].rect))
 			{
 				for(const auto &s: messages[i].messages)
 				{
@@ -283,7 +312,7 @@ void App::update()
 			{
 				for(unsigned int i = 0; i < currentMap.items.size(); i++)
 				{
-					if(gh::colliding(currentMap.items[i], player.rect()))
+					if(gh::colliding(currentMap.items[i], player.getHitBox()))
 					{
 						itemCount++;
 						if(currentMap.lastCheckpoint == glm::vec4(0))
@@ -302,7 +331,7 @@ void App::update()
 						}
 					}
 				}
-			if(itemCount >= 4)
+			if(itemCount >= 4 || (currentMap.name != "forgotten"))
 			{
 			if(gh::colliding(player.getHitBox(), currentMap.getReactorTP()))
 			{
@@ -397,7 +426,15 @@ void App::draw()
 
 	mRender->begin2DDraw();
 
-	//mRender->DrawQuad(Resource::Texture(), vkhelper::calcMatFromRect(cam2D.currentRoom, 0), glm::vec4(1));
+	if(itemCount > 0)
+		mRender->DrawQuad(assets.items, vkhelper::calcMatFromRect(
+		glm::vec4(cam2D.getCameraOffset().x, cam2D.getCameraOffset().y,
+		 (assets.items.dim.x/4) * itemCount, assets.items.dim.y), 0),
+		glm::vec4(1.0f),
+		vkhelper::calcTexOffset(
+			assets.items.dim,
+			glm::vec4(-5, 0, (assets.items.dim.x/4) * itemCount, assets.items.dim.y)),false);
+
 
 	msgManager.Draw(*mRender, cam2D.getCameraOffset());
 
@@ -408,6 +445,10 @@ void App::draw()
 	for(auto &b: bullets)
 		b.Draw(*mRender);
 
+	for(auto &d: doors)
+		{
+			d.Draw(*mRender, cam2D.getCameraArea());
+		}
 	currentMap.Draw(*mRender);
 	
 	submitDraw = std::thread(&Render::endDraw, mRender, std::ref(finishedDrawSubmit));

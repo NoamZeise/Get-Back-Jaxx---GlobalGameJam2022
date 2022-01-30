@@ -4,6 +4,7 @@
 
 void Actor::Update(Timer &timer, std::vector<glm::vec4> &colliders)
 	{
+		glm::vec2 ogHitboxPos = glm::vec2(hitbox.x, hitbox.y);
 		if(abs(velocity.x) + abs(velocity.y) > max_speed)
 		{
 			velocity.x /=1.5;
@@ -16,25 +17,27 @@ void Actor::Update(Timer &timer, std::vector<glm::vec4> &colliders)
 		}
 		collided = false;
 
-		float prevX = spriteRect.x;
-		spriteRect.x += velocity.x * timer.FrameElapsed();
+		float prevX = hitbox.x;
+		hitbox.x += velocity.x * timer.FrameElapsed();
 		for(const auto &rect: colliders)
 		{
-			if(gh::colliding(rect, spriteRect))
+			if(gh::colliding(rect, hitbox))
 			{
 				collided = true;
-				spriteRect.x = prevX;
+				hitbox.x = prevX;
 				break;
 			}
 		}
-		float prevY = spriteRect.y;
-		spriteRect.y += velocity.y * timer.FrameElapsed();
+		float prevY = hitbox.y;
+		hitbox.y += velocity.y * timer.FrameElapsed();
+
+		prevAnim = direction;
 		for(const auto &rect: colliders)
 		{
-			if(gh::colliding(rect, spriteRect))
+			if(gh::colliding(rect, hitbox))
 			{
 				collided = true;
-				spriteRect.y = prevY;
+				hitbox.y = prevY;
 				break;
 			}
 		}
@@ -67,10 +70,12 @@ void Actor::Update(Timer &timer, std::vector<glm::vec4> &colliders)
 		}
 		}
 
+		spriteRect = hitbox;
+		spriteRect -= hitboxOffset;
+
 		spriteRect.z = currentFrame.size.x;
 		spriteRect.w = currentFrame.size.y;
 
-		hitbox = spriteRect;
 		colour = glm::vec4(1.0f);
 		spriteMat = vkhelper::calcMatFromRect(spriteRect, 0);
 	}
@@ -91,8 +96,11 @@ Player::Player(std::vector<Animation> animations, glm::vec2 position, Audio *aud
 	dirtyFootsteps = SoundEffectBank("audio/sfx/dirty-footsteps/", 400, 50, 0.7, audio);
 	cleanFootsteps = SoundEffectBank("audio/sfx/clean-footsteps/", 400, 50, 0.7, audio);
 	weaponSound = SoundEffectBank("audio/sfx/machette-swing/", 500, 50, 0.8, audio);
-
+	prevAnim = AnimationType::Down;
 	pushFactor = 2;
+
+	hitboxOffset = glm::vec4(0, 32, -29, -32);
+	hitbox += hitboxOffset;
 }
 
 void Player::Update(Timer &timer, Input &input, std::vector<glm::vec4> &colliders)
@@ -126,6 +134,17 @@ void Player::Update(Timer &timer, Input &input, std::vector<glm::vec4> &collider
 		{
 			dirtyFootsteps.Play(timer);
 		}
+		hitboxOffset = glm::vec4(0, 32, -29, -32);
+		if(direction == AnimationType::Left)
+			hitboxOffset = glm::vec4(18, 32, -29, -32);
+		if(prevAnim != AnimationType::Left && direction == AnimationType::Left)
+		{
+		//	hitbox.x += 18;
+		}
+		if(prevAnim == AnimationType::Left && direction != AnimationType::Left)
+		{
+		//	hitbox.x -= 18;
+		}
 
 		Actor::Update(timer, colliders);
 
@@ -144,7 +163,7 @@ void Player::Update(Timer &timer, Input &input, std::vector<glm::vec4> &collider
 					break;
 				case AnimationType::Down:
 				weaponMat = vkhelper::calcMatFromRect(
-						glm::vec4(spriteRect.x, spriteRect.y + spriteRect.w,
+						glm::vec4(spriteRect.x, spriteRect.y + spriteRect.w - 20,
 									attackFrame.size.x, attackFrame.size.y),
 									180);
 					damageZone = glm::vec4(spriteRect.x, spriteRect.y + spriteRect.w,
@@ -152,7 +171,7 @@ void Player::Update(Timer &timer, Input &input, std::vector<glm::vec4> &collider
 					break;
 				case AnimationType::Left:
 				weaponMat = vkhelper::calcMatFromRect(
-						glm::vec4(spriteRect.x - attackFrame.size.x, spriteRect.y,
+						glm::vec4(spriteRect.x - attackFrame.size.x + 10, spriteRect.y,
 									attackFrame.size.x, attackFrame.size.y),
 									-90);
 						damageZone = glm::vec4(spriteRect.x - attackFrame.size.x, spriteRect.y,
@@ -160,7 +179,7 @@ void Player::Update(Timer &timer, Input &input, std::vector<glm::vec4> &collider
 					break;
 				case AnimationType::Right:
 				weaponMat = vkhelper::calcMatFromRect(
-						glm::vec4(spriteRect.x + attackFrame.size.x, spriteRect.y + spriteRect.w/2,
+						glm::vec4(spriteRect.x + attackFrame.size.x - 10, spriteRect.y + spriteRect.w/2,
 									attackFrame.size.x, attackFrame.size.y),
 									90);
 				damageZone = glm::vec4(spriteRect.x + attackFrame.size.x, spriteRect.y + spriteRect.w/2,
@@ -192,14 +211,14 @@ void Player::Update(Timer &timer, Input &input, std::vector<glm::vec4> &collider
 				render.DrawQuad(attackFrame.tex, weaponMat, glm::vec4(1), attackFrame.textureOffset);
 			}
 		}
-		//if(attackingTimer < attackingDelay)
-		//	render.DrawQuad(Resource::Texture(), vkhelper::getModelMatrix(damageZone, 0), glm::vec4(1), glm::vec4(0, 0, 1, 1));
+		//	render.DrawQuad(Resource::Texture(), vkhelper::getModelMatrix(hitbox, 0), glm::vec4(1), glm::vec4(0, 0, 1, 1));
 	}
 
 void Enemy::Update(Timer &timer, std::vector<glm::vec4> &colliders, glm::vec2 player)
 {
 	if(active)
 	{
+		spriteRect = hitbox;
 		shootTimer += timer.FrameElapsed();
 		if(collided)
 			velocity = -velocity;

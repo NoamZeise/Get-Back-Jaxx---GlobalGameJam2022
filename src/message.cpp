@@ -54,7 +54,7 @@ void MessageManager::AddMessage(Render &render, std::string msg)
 	{
 		if(msg[i] == ' ')
 		{
-			if(render.MeasureString(font, msgLine + lastWord, textSize) > msgBoxOffset.z - fontXOff*2)
+			if(render.MeasureString(font, msgLine + lastWord, textSize) > msgBoxOffset.z - fontXOff*2.5)
 			{
 				messages.back().lines.push_back(msgLine);
 				msgLine = lastWord.append(" ");
