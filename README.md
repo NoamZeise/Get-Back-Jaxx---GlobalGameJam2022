@@ -8,6 +8,6 @@ Team Chronos
 - Mick Cooke -> Music   https://www.toomanycookes.co.uk/
 - Wren Weist -> Art    https://www.artstation.com/wrenwiest
 - Retoro -> Sound/Writing   https://www.retrossfx.com/
-- Noam Zeise -> Programming  https://noamzeise.wordpress.com/
+- Noam Zeise -> Programming  https://www.noamzeise.com/
 ----------------------------
 
